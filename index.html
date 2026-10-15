@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>打字貓咪 Typing Cat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --night: #1d2340;
+    --night-2: #2b3366;
+    --cream: #fff6e6;
+    --ink: #2a2433;
+    --orange: #ff9f43;
+    --orange-d: #e07b1a;
+    --pink: #ff6b8b;
+    --mint: #3ddc97;
+    --sky: #7ec8ff;
+    --gold: #ffd166;
+    --muted: #8e8aa3;
+    --font: "Fredoka", "Noto Sans TC", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: var(--font);
+    background: var(--night);
+    color: var(--cream);
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button { font-family: inherit; cursor: pointer; }
+
+  #app { position: relative; width: 100%; height: 100dvh; max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; }
+
+  /* ---------- Screens ---------- */
+  .screen { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 24px 16px; z-index: 20; }
+  .screen.active { display: flex; }
+  .card {
+    background: var(--cream); color: var(--ink);
+    border-radius: 28px; padding: 28px 24px; width: 100%; max-width: 460px;
+    box-shadow: 0 10px 0 #0003, 0 20px 50px #0006;
+    text-align: center;
+    max-height: calc(100dvh - 32px); overflow-y: auto;
+  }
+  .logo { font-size: 64px; line-height: 1; animation: bob 2.4s ease-in-out infinite; }
+  @keyframes bob { 50% { transform: translateY(-6px) rotate(-4deg); } }
+  h1 { font-size: 32px; font-weight: 900; margin: 6px 0 2px; letter-spacing: 1px; }
+  .subtitle { color: #6d6680; font-size: 14px; margin-bottom: 18px; }
+
+  .opt-group { margin: 14px 0; text-align: left; }
+  .opt-label { font-size: 13px; font-weight: 700; color: #6d6680; margin-bottom: 6px; }
+  .seg { display: flex; gap: 6px; background: #f0e3cc; padding: 5px; border-radius: 16px; }
+  .seg button {
+    flex: 1; border: none; background: transparent; color: var(--ink);
+    padding: 10px 6px; border-radius: 12px; font-size: 15px; font-weight: 700;
+    transition: background .15s, transform .1s;
+  }
+  .seg button small { display: block; font-size: 11px; font-weight: 500; color: #8a8296; margin-top: 2px; }
+  .seg button.on { background: var(--orange); color: #fff; box-shadow: 0 3px 0 var(--orange-d); }
+  .seg button.on small { color: #fff3e0; }
+
+  .best-line { margin: 16px 0 4px; font-size: 14px; color: #6d6680; }
+  .best-line b { color: var(--orange-d); font-size: 18px; }
+
+  .btn {
+    border: none; border-radius: 18px; padding: 14px 22px; font-size: 18px; font-weight: 900;
+    background: var(--orange); color: #fff; box-shadow: 0 5px 0 var(--orange-d);
+    transition: transform .08s, box-shadow .08s; width: 100%; margin-top: 12px;
+  }
+  .btn:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--orange-d); }
+  .btn.ghost { background: #e9dcc4; color: var(--ink); box-shadow: 0 5px 0 #cdbd9f; }
+  .btn.ghost:active { box-shadow: 0 1px 0 #cdbd9f; }
+  .row { display: flex; gap: 10px; }
+
+  .sound-toggle {
+    position: absolute; top: 14px; right: 14px; z-index: 40;
+    width: 40px; height: 40px; border-radius: 50%; border: none;
+    background: #ffffff1f; color: #fff; font-size: 18px;
+  }
+  .howto { font-size: 12.5px; color: #7a7290; margin-top: 14px; line-height: 1.7; text-align: left; background: #f6ecd9; border-radius: 14px; padding: 10px 14px; }
+
+  /* ---------- Game ---------- */
+  #game { position: absolute; inset: 0; display: none; flex-direction: column; }
+  #game.active { display: flex; }
+
+  .hud {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 12px 116px 10px 16px; font-weight: 700; font-size: 15px; z-index: 5;
+  }
+  .hud .stat { background: #ffffff14; padding: 6px 12px; border-radius: 12px; white-space: nowrap; }
+  .hud .stat span { color: var(--gold); }
+  .hud .fish { letter-spacing: 1px; font-size: 18px; }
+  .hud .fish .lost { opacity: .18; filter: grayscale(1); }
+  #pauseBtn { position: absolute; top: 12px; right: 60px; width: 40px; height: 40px; border-radius: 50%; border: none; background: #ffffff1f; color: #fff; font-size: 16px; z-index: 6; }
+
+  #field {
+    position: relative; flex: 1; overflow: hidden;
+    background:
+      radial-gradient(circle at 85% 12%, #fff7d1 0 22px, #fff7d133 23px 40px, transparent 41px),
+      linear-gradient(180deg, var(--night) 0%, var(--night-2) 70%, #3c3f7a 100%);
+  }
+  .star { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #fff; opacity: .5; animation: twinkle 3s infinite; }
+  @keyframes twinkle { 50% { opacity: .1; } }
+
+  .word {
+    position: absolute; top: 0; left: 0;
+    display: flex; flex-direction: column; align-items: center;
+    will-change: transform; pointer-events: none;
+  }
+  .word .mouse { font-size: 26px; line-height: 1; margin-bottom: -4px; animation: wiggle .5s ease-in-out infinite alternate; }
+  @keyframes wiggle { to { transform: rotate(10deg); } }
+  .word .label {
+    background: var(--cream); color: var(--ink);
+    padding: 4px 12px; border-radius: 12px; font-size: 19px; font-weight: 700;
+    box-shadow: 0 3px 0 #0004; white-space: nowrap; letter-spacing: .5px;
+    border: 2px solid transparent;
+  }
+  .word.danger .label { border-color: var(--pink); animation: pulse .5s infinite alternate; }
+  @keyframes pulse { to { box-shadow: 0 0 14px var(--pink); } }
+  .word.target .label { border-color: var(--mint); }
+  .word .label .typed { color: var(--mint); text-decoration: underline 3px; text-underline-offset: 3px; }
+
+  .burst { position: absolute; pointer-events: none; font-weight: 900; z-index: 4; }
+  .particle {
+    position: absolute; width: 8px; height: 8px; border-radius: 50%;
+    animation: fly .6s ease-out forwards;
+  }
+  @keyframes fly { to { transform: translate(var(--dx), var(--dy)) scale(.2); opacity: 0; } }
+  .flyaway { position: absolute; font-size: 26px; animation: flyaway .7s ease-in forwards; pointer-events: none; }
+  @keyframes flyaway { to { transform: translate(var(--dx), -160px) rotate(540deg); opacity: 0; } }
+  .score-pop { position: absolute; font-size: 18px; color: var(--gold); font-weight: 900; animation: rise .9s ease-out forwards; pointer-events: none; text-shadow: 0 2px 0 #0006; }
+  @keyframes rise { to { transform: translateY(-50px); opacity: 0; } }
+
+  .banner {
+    position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%);
+    font-size: 40px; font-weight: 900; color: var(--gold); pointer-events: none;
+    text-shadow: 0 4px 0 #0007; white-space: nowrap; z-index: 6;
+    animation: banner 1.1s ease-out forwards;
+  }
+  @keyframes banner {
+    0% { transform: translate(-50%, -50%) scale(.3); opacity: 0; }
+    20% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+    70% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    100% { transform: translate(-50%, -80%) scale(1); opacity: 0; }
+  }
+  .countdown { font-size: 110px; color: #fff; }
+
+  .shake { animation: shake .35s; }
+  @keyframes shake {
+    20% { transform: translateX(-10px); } 40% { transform: translateX(9px); }
+    60% { transform: translateX(-6px); } 80% { transform: translateX(4px); }
+  }
+
+  .ground {
+    position: relative; height: 92px; flex-shrink: 0;
+    background: linear-gradient(180deg, #8b5e3c, #6d4529);
+    border-top: 5px solid #a97850;
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+    padding: 0 16px;
+  }
+  .cat { font-size: 54px; line-height: 1; transition: transform .2s; transform-origin: bottom center; }
+  .cat.happy { animation: hop .4s; }
+  @keyframes hop { 50% { transform: translateY(-14px) scale(1.08); } }
+  .input-wrap { flex: 1; max-width: 420px; position: relative; }
+  #typeInput {
+    width: 100%; font-family: var(--font); font-size: 22px; font-weight: 700;
+    padding: 12px 16px; border-radius: 16px; border: 3px solid #fff0;
+    background: var(--cream); color: var(--ink); outline: none;
+    box-shadow: inset 0 3px 0 #0001, 0 4px 0 #0004;
+  }
+  #typeInput:focus { border-color: var(--orange); }
+  #typeInput.wrong { border-color: var(--pink); animation: shake .3s; }
+  .combo-tag {
+    position: absolute; right: 10px; top: -14px; background: var(--pink); color: #fff;
+    font-size: 13px; font-weight: 900; padding: 2px 10px; border-radius: 10px;
+    opacity: 0; transition: opacity .2s, transform .2s; transform: scale(.6);
+  }
+  .combo-tag.show { opacity: 1; transform: scale(1); }
+
+  /* Pause overlay */
+  #pauseOverlay { background: #1d2340cc; backdrop-filter: blur(3px); z-index: 30; }
+
+  /* ---------- Result ---------- */
+  .result-title { font-size: 28px; font-weight: 900; margin: 4px 0; }
+  .new-record { display: inline-block; background: var(--pink); color: #fff; font-weight: 900; padding: 4px 12px; border-radius: 10px; font-size: 14px; margin-bottom: 8px; animation: bob 1.2s infinite; }
+  .big-score { font-size: 54px; font-weight: 900; color: var(--orange-d); line-height: 1.1; }
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 16px 0 6px; }
+  .stats-grid div { background: #f3e6cf; border-radius: 14px; padding: 10px 6px; }
+  .stats-grid b { display: block; font-size: 22px; color: var(--ink); }
+  .stats-grid small { font-size: 12px; color: #7a7290; }
+  .result-meta { font-size: 13px; color: #7a7290; }
+
+  @media (max-width: 520px) {
+    h1 { font-size: 27px; }
+    .hud { font-size: 13px; padding: 10px 108px 8px 10px; flex-wrap: wrap; gap: 6px; }
+    .hud .stat { padding: 5px 9px; }
+    .word .label { font-size: 16px; padding: 3px 9px; }
+    .word .mouse { font-size: 22px; }
+    .cat { font-size: 42px; }
+    .ground { height: 80px; gap: 10px; }
+    #typeInput { font-size: 19px; padding: 10px 12px; }
+    .big-score { font-size: 44px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <button class="sound-toggle" id="soundBtn" title="音效開關">🔊</button>
+
+  <!-- ===== Start screen ===== -->
+  <section class="screen active" id="startScreen">
+    <div class="card">
+      <div class="logo">🐱🐟</div>
+      <h1>打字貓咪</h1>
+      <div class="subtitle">老鼠要來偷魚乾了！打出牠們扛的字把牠們趕走！</div>
+
+      <div class="opt-group">
+        <div class="opt-label">語言</div>
+        <div class="seg" data-key="lang">
+          <button data-val="en" class="on">英打<small>English</small></button>
+          <button data-val="zh">中打<small>注音／拼音</small></button>
+        </div>
+      </div>
+      <div class="opt-group">
+        <div class="opt-label">模式</div>
+        <div class="seg" data-key="mode">
+          <button data-val="survival" class="on">生存模式<small>5 條魚乾</small></button>
+          <button data-val="timed">限時模式<small>60 秒</small></button>
+        </div>
+      </div>
+      <div class="opt-group">
+        <div class="opt-label">難度</div>
+        <div class="seg" data-key="diff">
+          <button data-val="easy">簡單</button>
+          <button data-val="normal" class="on">普通</button>
+          <button data-val="hard">困難</button>
+        </div>
+      </div>
+
+      <div class="best-line">這個組合的最高分：<b id="bestScore">0</b></div>
+      <button class="btn" id="startBtn">開始遊戲 ▶</button>
+      <div class="howto">
+        ⌨️ 打出畫面上任何一個字，就會自動消除<br>
+        🐟 生存模式：老鼠掉到地上會偷走一條魚乾<br>
+        ⏸️ 按 <b>Esc</b> 暫停｜英打可按空白鍵清除輸入
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Game ===== -->
+  <section id="game">
+    <div class="hud">
+      <div class="stat">分數 <span id="hudScore">0</span></div>
+      <div class="stat">Lv <span id="hudLevel">1</span></div>
+      <div class="stat" id="hudLifeBox"><span class="fish" id="hudFish"></span></div>
+      <div class="stat" id="hudTimeBox" style="display:none">⏱ <span id="hudTime">60</span>s</div>
+    </div>
+    <button id="pauseBtn" title="暫停 (Esc)">⏸</button>
+    <div id="field"></div>
+    <div class="ground">
+      <div class="cat" id="cat">😺</div>
+      <div class="input-wrap">
+        <input id="typeInput" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="在這裡打字…">
+        <div class="combo-tag" id="comboTag">Combo ×0</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Pause ===== -->
+  <section class="screen" id="pauseOverlay">
+    <div class="card">
+      <div class="logo">😴</div>
+      <div class="result-title">暫停中</div>
+      <p class="result-meta">貓咪在打盹，老鼠也停下來了</p>
+      <button class="btn" id="resumeBtn">繼續遊戲</button>
+      <button class="btn ghost" id="quitBtn">回主畫面</button>
+    </div>
+  </section>
+
+  <!-- ===== Result ===== -->
+  <section class="screen" id="resultScreen">
+    <div class="card">
+      <div class="logo" id="resultEmoji">😸</div>
+      <div class="result-title" id="resultTitle">遊戲結束</div>
+      <div id="newRecord" class="new-record" style="display:none">🏆 新紀錄！</div>
+      <div class="big-score" id="resScore">0</div>
+      <div class="result-meta" id="resMeta"></div>
+      <div class="stats-grid">
+        <div><b id="resSpeed">0</b><small id="resSpeedUnit">WPM</small></div>
+        <div><b id="resAcc">0%</b><small>正確率</small></div>
+        <div><b id="resHits">0</b><small>打中字數</small></div>
+        <div><b id="resCombo">0</b><small>最高連擊</small></div>
+        <div><b id="resMistakes">0</b><small>打錯次數</small></div>
+        <div><b id="resMisses">0</b><small>漏掉的字</small></div>
+      </div>
+      <div class="row">
+        <button class="btn ghost" id="homeBtn">回主畫面</button>
+        <button class="btn" id="againBtn">再玩一次</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* =========================================================
+   字庫：各主題混合（動物、食物、科技、自然、日常、運動…）
+   ========================================================= */
+const WORDS_EN = `cat dog fish bird frog lion bear wolf duck goat panda tiger zebra horse mouse koala otter whale shark eagle snake rabbit monkey turtle dolphin penguin giraffe hamster parrot squirrel kangaroo
+apple bread cake rice soup tea milk egg pizza pasta salad candy honey lemon mango peach grape melon cookie butter cheese noodle burger banana orange coffee donut waffle pancake sandwich chocolate
+code data byte wifi mouse click cloud email phone robot laptop screen pixel server router coding python script widget keyboard browser website network program monitor download password bluetooth
+sun moon star rain snow wind tree leaf rock wave lake river ocean storm cloud flower forest island desert valley sunset thunder rainbow volcano mountain
+book desk door lamp chair clock table pillow window mirror wallet ticket camera pencil bottle basket blanket kitchen bicycle umbrella backpack calendar notebook
+run jump swim kick ball team goal race golf yoga skate tennis soccer hockey boxing karate cycling running climbing
+happy smile laugh dream magic music dance party gift jolly brave quick quiet sleepy lucky sweet fluffy shiny cozy gentle
+red blue green pink gold black white purple yellow silver
+time space world home city road town park school friend family garden planet rocket galaxy journey holiday adventure`.split(/\s+/).filter(Boolean);
+
+const WORDS_ZH = `貓咪 小狗 兔子 老虎 熊貓 企鵝 長頸鹿 海豚 松鼠 無尾熊 金魚 烏龜 鸚鵡 狐狸 大象 獅子 猴子 斑馬 袋鼠 刺蝟
+珍珠奶茶 牛肉麵 小籠包 臭豆腐 雞排 蛋餅 滷肉飯 鳳梨酥 豆花 芒果冰 漢堡 披薩 壽司 拉麵 蛋糕 餅乾 巧克力 咖啡 鬆餅 布丁 西瓜 草莓 香蕉 蘋果
+電腦 手機 鍵盤 滑鼠 螢幕 網路 程式 機器人 耳機 相機 雲端 密碼 藍牙 下載 軟體 晶片 人工智慧 網站 遊戲機 充電器
+太陽 月亮 星星 彩虹 雷雨 颱風 森林 海洋 沙漠 火山 瀑布 冰山 花園 草原 河流 山頂 日出 夕陽 雪花 微風
+書包 鉛筆 橡皮擦 雨傘 枕頭 棉被 時鐘 鏡子 窗戶 椅子 冰箱 電梯 錢包 杯子 筆記本 行事曆 腳踏車 捷運 公車 火車
+跑步 游泳 籃球 足球 棒球 羽球 桌球 瑜伽 爬山 跳舞 溜冰 騎車 健身 打拳 射箭
+開心 快樂 微笑 勇敢 溫柔 可愛 幸運 安靜 認真 努力 夢想 魔法 音樂 旅行 朋友 家人 生日 假期 冒險 驚喜
+學校 圖書館 夜市 公園 動物園 遊樂園 博物館 便利商店 電影院 咖啡廳 早餐店 海邊 沙灘 寺廟 老街 宇宙 星球 火箭 銀河 外星人`.split(/\s+/).filter(Boolean);
+
+/* =========================================================
+   難度參數（速度以「畫面高度比例 / 秒」計）
+   ========================================================= */
+const DIFF = {
+  easy:   { speed: 0.065, spawn: 2.6, minSpawn: 0.9,  enLen: [2, 5],  zhLen: [2, 2] },
+  normal: { speed: 0.09,  spawn: 2.0, minSpawn: 0.7,  enLen: [3, 7],  zhLen: [2, 3] },
+  hard:   { speed: 0.12,  spawn: 1.5, minSpawn: 0.55, enLen: [4, 12], zhLen: [2, 4] },
+};
+const LEVEL_EVERY = 15;      // 每 15 秒升一級
+const SPEED_UP = 1.12;       // 每級速度 ×1.12
+const SPAWN_DOWN = 0.88;     // 每級出字間隔 ×0.88
+const MAX_FISH = 5;
+const TIME_LIMIT = 60;
+
+/* =========================================================
+   狀態
+   ========================================================= */
+const settings = { lang: 'en', mode: 'survival', diff: 'normal' };
+let soundOn = true;
+let G = null;            // 當前遊戲狀態
+let rafId = null;
+
+const $ = id => document.getElementById(id);
+const field = $('field'), input = $('typeInput'), cat = $('cat');
+
+/* ---------- localStorage（包 try/catch，無法使用時不影響遊戲） ---------- */
+const bestKey = () => `typingcat_best_${settings.lang}_${settings.mode}_${settings.diff}`;
+function getBest() { try { return +(localStorage.getItem(bestKey()) || 0); } catch { return 0; } }
+function setBest(v) { try { localStorage.setItem(bestKey(), v); } catch {} }
+try { soundOn = localStorage.getItem('typingcat_sound') !== 'off'; } catch {}
+
+/* =========================================================
+   音效：Web Audio API 即時合成
+   ========================================================= */
+let actx = null;
+function ac() {
+  if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch { return null; } }
+  if (actx.state === 'suspended') actx.resume();
+  return actx;
+}
+function tone({ freq = 440, to = null, dur = 0.12, type = 'sine', vol = 0.18, delay = 0 }) {
+  if (!soundOn) return;
+  const c = ac(); if (!c) return;
+  const t = c.currentTime + delay;
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(c.destination);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+const SFX = {
+  pop(combo) { const base = 520 + Math.min(combo, 20) * 25; tone({ freq: base, to: base * 2, dur: 0.1, type: 'triangle', vol: 0.22 }); },
+  wrong() { tone({ freq: 160, to: 110, dur: 0.18, type: 'square', vol: 0.08 }); },
+  meow() {
+    if (!soundOn) return; const c = ac(); if (!c) return;
+    const t = c.currentTime, o = c.createOscillator(), g = c.createGain(), f = c.createBiquadFilter();
+    o.type = 'sawtooth'; f.type = 'bandpass'; f.Q.value = 4;
+    o.frequency.setValueAtTime(500, t); o.frequency.linearRampToValueAtTime(820, t + 0.15); o.frequency.linearRampToValueAtTime(420, t + 0.45);
+    f.frequency.setValueAtTime(900, t); f.frequency.linearRampToValueAtTime(1800, t + 0.15); f.frequency.linearRampToValueAtTime(700, t + 0.45);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.35, t + 0.05); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+    o.connect(f).connect(g).connect(c.destination); o.start(t); o.stop(t + 0.55);
+  },
+  level() { [523, 659, 784, 1047].forEach((f, i) => tone({ freq: f, dur: 0.12, type: 'triangle', vol: 0.15, delay: i * 0.08 })); },
+  combo() { [784, 1047].forEach((f, i) => tone({ freq: f, dur: 0.1, type: 'square', vol: 0.07, delay: i * 0.07 })); },
+  tick() { tone({ freq: 880, dur: 0.06, type: 'sine', vol: 0.12 }); },
+  go() { tone({ freq: 1320, dur: 0.2, type: 'sine', vol: 0.16 }); },
+  over() { [523, 440, 349, 262].forEach((f, i) => tone({ freq: f, dur: 0.22, type: 'triangle', vol: 0.15, delay: i * 0.14 })); },
+  record() { [523, 659, 784, 1047, 1319].forEach((f, i) => tone({ freq: f, dur: 0.14, type: 'triangle', vol: 0.14, delay: 0.6 + i * 0.09 })); },
+};
+
+/* =========================================================
+   開始畫面
+   ========================================================= */
+document.querySelectorAll('.seg').forEach(seg => {
+  seg.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    settings[seg.dataset.key] = b.dataset.val;
+    refreshBest();
+    tone({ freq: 660, dur: 0.05, type: 'triangle', vol: 0.1 });
+  });
+});
+function refreshBest() { $('bestScore').textContent = getBest(); }
+refreshBest();
+
+function updateSoundBtn() { $('soundBtn').textContent = soundOn ? '🔊' : '🔇'; }
+updateSoundBtn();
+$('soundBtn').addEventListener('click', () => {
+  soundOn = !soundOn; updateSoundBtn();
+  try { localStorage.setItem('typingcat_sound', soundOn ? 'on' : 'off'); } catch {}
+  if (G && G.running) input.focus();
+});
+
+function show(id) {
+  ['startScreen', 'pauseOverlay', 'resultScreen'].forEach(s => $(s).classList.toggle('active', s === id));
+  $('game').classList.toggle('active', id === null || id === 'pauseOverlay' || id === 'game');
+}
+
+/* 星星背景 */
+for (let i = 0; i < 40; i++) {
+  const s = document.createElement('div'); s.className = 'star';
+  s.style.left = Math.random() * 100 + '%'; s.style.top = Math.random() * 85 + '%';
+  s.style.animationDelay = (Math.random() * 3) + 's';
+  field.appendChild(s);
+}
+
+/* =========================================================
+   遊戲流程
+   ========================================================= */
+$('startBtn').addEventListener('click', startGame);
+$('againBtn').addEventListener('click', startGame);
+$('homeBtn').addEventListener('click', goHome);
+$('quitBtn').addEventListener('click', goHome);
+$('resumeBtn').addEventListener('click', resume);
+$('pauseBtn').addEventListener('click', () => G && (G.paused ? resume() : pause()));
+
+function goHome() {
+  stopLoop(); clearWords(); G = null;
+  refreshBest(); show('startScreen');
+}
+
+function startGame() {
+  ac(); // 使用者手勢中啟用音效
+  stopLoop(); clearWords();
+  const d = DIFF[settings.diff];
+  const pool = (settings.lang === 'en' ? WORDS_EN : WORDS_ZH).filter(w => {
+    const [a, b] = settings.lang === 'en' ? d.enLen : d.zhLen;
+    return w.length >= a && w.length <= b;
+  });
+  G = {
+    pool, d,
+    words: [], running: false, paused: false, over: false,
+    elapsed: 0, spawnTimer: 0.6, level: 1,
+    speed: d.speed, spawnEvery: d.spawn,
+    score: 0, combo: 0, maxCombo: 0,
+    hits: 0, mistakes: 0, misses: 0, correctChars: 0,
+    fish: MAX_FISH, timeLeft: TIME_LIMIT,
+    composing: false, lastMood: 0,
+  };
+  const timed = settings.mode === 'timed';
+  $('hudLifeBox').style.display = timed ? 'none' : '';
+  $('hudTimeBox').style.display = timed ? '' : 'none';
+  input.value = ''; input.placeholder = settings.lang === 'en' ? '在這裡打字…' : '用注音／拼音輸入…';
+  updateHUD(); setCatMood();
+  show('game');
+  input.focus();
+  countdown(3);
+}
+
+function countdown(n) {
+  if (!G) return;
+  if (n === 0) {
+    banner('GO!', 'countdown'); SFX.go();
+    G.running = true; G.last = performance.now();
+    rafId = requestAnimationFrame(loop);
+    return;
+  }
+  banner(n, 'countdown'); SFX.tick();
+  G.cdTimer = setTimeout(() => countdown(n - 1), 700);
+}
+
+function stopLoop() {
+  if (rafId) cancelAnimationFrame(rafId); rafId = null;
+  if (G && G.cdTimer) clearTimeout(G.cdTimer);
+}
+function clearWords() { field.querySelectorAll('.word,.burst,.banner,.flyaway,.score-pop,.particle').forEach(n => n.remove()); }
+
+function pause() {
+  if (!G || !G.running || G.paused || G.over) return;
+  G.paused = true; stopLoop();
+  show('pauseOverlay');
+}
+function resume() {
+  if (!G || !G.paused) return;
+  G.paused = false; show('game');
+  G.last = performance.now();
+  rafId = requestAnimationFrame(loop);
+  input.focus();
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+
+/* ---------- 主迴圈 ---------- */
+function loop(now) {
+  if (!G || !G.running || G.paused) return;
+  const dt = Math.min(0.05, (now - G.last) / 1000);
+  G.last = now;
+  G.elapsed += dt;
+
+  // 升級
+  const lv = 1 + Math.floor(G.elapsed / LEVEL_EVERY);
+  if (lv > G.level) {
+    G.level = lv;
+    G.speed *= SPEED_UP;
+    G.spawnEvery = Math.max(G.d.minSpawn, G.spawnEvery * SPAWN_DOWN);
+    banner('Level UP!'); SFX.level(); updateHUD();
+  }
+
+  // 限時模式倒數
+  if (settings.mode === 'timed') {
+    G.timeLeft = Math.max(0, TIME_LIMIT - G.elapsed);
+    $('hudTime').textContent = Math.ceil(G.timeLeft);
+    if (G.timeLeft <= 0) return endGame();
+  }
+
+  // 出字
+  G.spawnTimer -= dt;
+  if (G.spawnTimer <= 0) { spawnWord(); G.spawnTimer = G.spawnEvery * (0.75 + Math.random() * 0.5); }
+
+  // 移動
+  const H = field.clientHeight;
+  for (let i = G.words.length - 1; i >= 0; i--) {
+    const w = G.words[i];
+    w.y += G.speed * H * dt;
+    w.el.style.transform = `translate(${w.x}px, ${w.y}px)`;
+    w.el.classList.toggle('danger', w.y > H * 0.72);
+    if (w.y + w.h >= H) missWord(w, i);
+    if (G.over) return;
+  }
+  rafId = requestAnimationFrame(loop);
+}
+
+function spawnWord() {
+  const onScreen = new Set(G.words.map(w => w.text));
+  let text, tries = 0;
+  do { text = G.pool[Math.floor(Math.random() * G.pool.length)]; } while (onScreen.has(text) && ++tries < 20);
+  if (onScreen.has(text)) return;
+
+  const el = document.createElement('div');
+  el.className = 'word';
+  el.innerHTML = `<div class="mouse">🐭</div><div class="label"></div>`;
+  el.querySelector('.label').textContent = text;
+  field.appendChild(el);
+  const W = field.clientWidth, ew = el.offsetWidth, eh = el.offsetHeight;
+  // 選一個不和最近單字重疊的 x
+  let x, ok, t = 0;
+  do {
+    x = 8 + Math.random() * Math.max(1, W - ew - 16);
+    ok = G.words.every(o => o.y > eh * 1.6 || Math.abs(o.x - x) > Math.max(ew, o.w) + 6);
+  } while (!ok && ++t < 15);
+  const w = { text, el, x, y: -eh, w: ew, h: eh };
+  el.style.transform = `translate(${x}px, ${w.y}px)`;
+  G.words.push(w);
+  highlight();
+}
+
+/* ---------- 打中 ---------- */
+function hitWord(w) {
+  const idx = G.words.indexOf(w);
+  G.words.splice(idx, 1);
+  G.combo++; G.maxCombo = Math.max(G.maxCombo, G.combo);
+  G.hits++; G.correctChars += w.text.length;
+  const mult = comboMult(G.combo);
+  const base = settings.lang === 'en' ? 10 : 30;
+  const pts = Math.round(w.text.length * base * mult);
+  G.score += pts;
+
+  // 特效：粒子＋老鼠彈飛＋分數
+  const cx = w.x + w.w / 2, cy = w.y + w.h / 2;
+  const colors = ['#ffd166', '#ff9f43', '#3ddc97', '#7ec8ff', '#ff6b8b'];
+  for (let i = 0; i < 12; i++) {
+    const p = document.createElement('div'); p.className = 'particle';
+    const ang = (Math.PI * 2 * i) / 12, dist = 40 + Math.random() * 40;
+    p.style.left = cx + 'px'; p.style.top = cy + 'px';
+    p.style.background = colors[i % colors.length];
+    p.style.setProperty('--dx', Math.cos(ang) * dist + 'px');
+    p.style.setProperty('--dy', Math.sin(ang) * dist + 'px');
+    field.appendChild(p); setTimeout(() => p.remove(), 650);
+  }
+  const fly = document.createElement('div'); fly.className = 'flyaway'; fly.textContent = '🐭';
+  fly.style.left = (cx - 13) + 'px'; fly.style.top = (w.y) + 'px';
+  fly.style.setProperty('--dx', (Math.random() < .5 ? -1 : 1) * (60 + Math.random() * 60) + 'px');
+  field.appendChild(fly); setTimeout(() => fly.remove(), 750);
+  const sp = document.createElement('div'); sp.className = 'score-pop'; sp.textContent = '+' + pts;
+  sp.style.left = (cx - 16) + 'px'; sp.style.top = (cy - 10) + 'px';
+  field.appendChild(sp); setTimeout(() => sp.remove(), 950);
+  w.el.remove();
+
+  SFX.pop(G.combo);
+  if ([5, 10, 20, 30, 50].includes(G.combo) || (G.combo > 50 && G.combo % 25 === 0)) {
+    banner(`Combo ×${G.combo}!`); SFX.combo();
+  }
+  cat.classList.remove('happy'); void cat.offsetWidth; cat.classList.add('happy');
+  input.value = '';
+  updateHUD(); setCatMood(); highlight();
+}
+
+function comboMult(c) { return c >= 20 ? 3 : c >= 10 ? 2 : c >= 5 ? 1.5 : 1; }
+
+/* ---------- 漏掉 ---------- */
+function missWord(w, i) {
+  G.words.splice(i, 1); w.el.remove();
+  G.misses++; G.combo = 0;
+  SFX.meow();
+  field.classList.remove('shake'); void field.offsetWidth; field.classList.add('shake');
+  if (settings.mode === 'survival') {
+    G.fish--;
+    setCatMood(true);
+    updateHUD();
+    if (G.fish <= 0) return endGame();
+  } else {
+    setCatMood(true); updateHUD();
+  }
+  highlight();
+}
+
+/* ---------- 打錯（送出卻沒有對應的字） ---------- */
+function wrongSubmit() {
+  if (!input.value.trim()) return;
+  G.mistakes++; G.combo = 0;
+  SFX.wrong();
+  input.classList.remove('wrong'); void input.offsetWidth; input.classList.add('wrong');
+  input.value = '';
+  updateHUD(); setCatMood(); highlight();
+}
+
+/* =========================================================
+   輸入處理（支援中文輸入法：選字完成才判斷）
+   ========================================================= */
+function norm(s) { return settings.lang === 'en' ? s.trim().toLowerCase() : s.trim(); }
+
+function tryMatch() {
+  if (!G || !G.running || G.paused) return false;
+  const v = norm(input.value);
+  if (!v) { highlight(); return false; }
+  // 同字只會有一個在畫面上（出字時已避免重複），取最下面的
+  const cands = G.words.filter(w => w.text.toLowerCase() === v.toLowerCase());
+  if (cands.length) {
+    cands.sort((a, b) => b.y - a.y);
+    hitWord(cands[0]);
+    return true;
+  }
+  highlight();
+  return false;
+}
+
+input.addEventListener('compositionstart', () => { if (G) G.composing = true; });
+input.addEventListener('compositionend', () => { if (G) { G.composing = false; tryMatch(); } });
+input.addEventListener('input', e => {
+  if (!G) return;
+  if (e.isComposing || G.composing) return;
+  if (settings.lang === 'en' && input.value.endsWith(' ')) {
+    // 英打：空白鍵送出
+    input.value = input.value.trimEnd();
+    if (!tryMatch()) wrongSubmit();
+    return;
+  }
+  tryMatch();
+});
+input.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { e.preventDefault(); pause(); return; }
+  if (e.key === 'Enter') {
+    if (e.isComposing || (G && G.composing) || e.keyCode === 229) return; // 輸入法選字中的 Enter 不算
+    e.preventDefault();
+    if (!tryMatch()) wrongSubmit();
+  }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && G && G.paused) { e.preventDefault(); resume(); }
+  else if (e.key === 'Escape' && G && G.running && document.activeElement !== input) pause();
+});
+field.addEventListener('pointerdown', () => { if (G && G.running) setTimeout(() => input.focus(), 0); });
+
+/* 英打即時標亮：開頭相符的單字 */
+function highlight() {
+  if (!G) return;
+  const v = settings.lang === 'en' ? input.value.toLowerCase() : input.value;
+  G.words.forEach(w => {
+    const label = w.el.querySelector('.label');
+    const match = v && !G.composing && w.text.toLowerCase().startsWith(v.toLowerCase());
+    w.el.classList.toggle('target', !!match);
+    if (match) {
+      label.innerHTML = '';
+      const t = document.createElement('span'); t.className = 'typed'; t.textContent = w.text.slice(0, v.length);
+      label.append(t, document.createTextNode(w.text.slice(v.length)));
+    } else if (label.childElementCount) {
+      label.textContent = w.text;
+    }
+  });
+}
+
+/* =========================================================
+   HUD / 貓咪表情 / 橫幅
+   ========================================================= */
+function updateHUD() {
+  if (!G) return;
+  $('hudScore').textContent = G.score;
+  $('hudLevel').textContent = G.level;
+  $('hudFish').innerHTML = Array.from({ length: MAX_FISH }, (_, i) =>
+    `<span class="${i < G.fish ? '' : 'lost'}">🐟</span>`).join('');
+  const tag = $('comboTag');
+  tag.textContent = `Combo ×${G.combo}` + (comboMult(G.combo) > 1 ? `（${comboMult(G.combo)} 倍）` : '');
+  tag.classList.toggle('show', G.combo >= 2);
+}
+
+function setCatMood(sad) {
+  if (!G) return;
+  clearTimeout(G.moodTimer);
+  if (sad) {
+    cat.textContent = '😿';
+    G.moodTimer = setTimeout(() => setCatMood(), 900);
+    return;
+  }
+  const lowLife = settings.mode === 'survival' && G.fish <= 2;
+  cat.textContent = G.combo >= 10 ? '😻' : lowLife ? '🙀' : G.combo >= 5 ? '😸' : '😺';
+}
+
+function banner(text, extra = '') {
+  const b = document.createElement('div');
+  b.className = 'banner ' + extra; b.textContent = text;
+  field.appendChild(b); setTimeout(() => b.remove(), 1100);
+}
+
+/* =========================================================
+   結算
+   ========================================================= */
+function endGame() {
+  if (!G || G.over) return;
+  G.over = true; G.running = false; stopLoop();
+  input.blur();
+  const minutes = Math.max(G.elapsed, 1) / 60;
+  const speed = settings.lang === 'en'
+    ? Math.round((G.correctChars / 5) / minutes)
+    : Math.round(G.correctChars / minutes);
+  const attempts = G.hits + G.mistakes + G.misses;
+  const acc = attempts ? Math.round((G.hits / attempts) * 1000) / 10 : 0;
+
+  const prev = getBest();
+  const isRecord = G.score > prev && G.score > 0;
+  if (isRecord) setBest(G.score);
+
+  $('resultTitle').textContent = settings.mode === 'timed' ? '時間到！' : '魚乾被偷光了！';
+  $('resultEmoji').textContent = isRecord ? '😻' : acc >= 90 ? '😸' : settings.mode === 'survival' ? '😿' : '😺';
+  $('newRecord').style.display = isRecord ? '' : 'none';
+  $('resScore').textContent = G.score;
+  $('resSpeed').textContent = speed;
+  $('resSpeedUnit').textContent = settings.lang === 'en' ? 'WPM（每分鐘字數）' : '字／分';
+  $('resAcc').textContent = acc + '%';
+  $('resHits').textContent = G.hits;
+  $('resCombo').textContent = G.maxCombo;
+  $('resMistakes').textContent = G.mistakes;
+  $('resMisses').textContent = G.misses;
+  const names = { en: '英打', zh: '中打', survival: '生存模式', timed: '限時模式', easy: '簡單', normal: '普通', hard: '困難' };
+  $('resMeta').textContent = `${names[settings.lang]}｜${names[settings.mode]}｜${names[settings.diff]}｜撐了 ${Math.round(G.elapsed)} 秒｜最高分 ${Math.max(prev, G.score)}`;
+
+  SFX.over(); if (isRecord) SFX.record();
+  setTimeout(() => { clearWords(); show('resultScreen'); }, 500);
+}
+
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'BUTTON') return;
+  if (e.key === 'Enter' && $('startScreen').classList.contains('active')) startGame();
+  else if (e.key === 'Enter' && $('resultScreen').classList.contains('active')) startGame();
+});
+</script>
+</body>
+</html>
